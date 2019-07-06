@@ -11,12 +11,12 @@ from definitions import IMAGES_PATH
 from image_editor import ImageEditor
 
 
-class Dialog(QDialog):
+class ProfileWindow(QDialog):
     NumGridRows = 3
     NumButtons = 4
 
     def __init__(self):
-        super(Dialog, self).__init__()
+        super(ProfileWindow, self).__init__()
         self.currentImage = ''
         self.init_ui()
 
@@ -172,7 +172,7 @@ class Dialog(QDialog):
 
 def main():
     app = QApplication(sys.argv)
-    dialog = Dialog()
+    dialog = ProfileWindow()
     sys.exit(dialog.exec_())
 
 

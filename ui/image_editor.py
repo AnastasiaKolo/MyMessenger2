@@ -10,7 +10,7 @@
 
 import os.path
 import sys
-
+print(__name__)
 from PIL import Image, ImageDraw
 from PIL.ImageQt import ImageQt
 from PyQt5.QtGui import QPixmap, QIcon, QPalette

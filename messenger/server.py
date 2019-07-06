@@ -14,6 +14,10 @@ import select
 import time
 import traceback
 from socket import *
+import html2text
+import datetime
+import asyncio
+from definitions import IMAGES_PATH
 from server_log_config import serv_log
 
 
@@ -22,12 +26,14 @@ def server_response(incoming_msg):
     # ответ вида:
     # presence = клиент ... вошел в чат
     # msg = сообщение от клиента ...
+    print("Received raw message {} bytes".format(len(incoming_msg)))
     json_resp = {}
     json_resp_error = {
         'response': 400,
         'time': time.time(),
         'alert': 'Could not parse message'
     }
+    str_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     if not incoming_msg:
         msg = json.dumps(json_resp_error)
         return msg
@@ -43,17 +49,18 @@ def server_response(incoming_msg):
         json_resp = {
             'response': 200,
             'time': time.time(),
-            'alert': 'Connected'
+            'alert': '{} {} is online'.format(str_date, client_msg['user']['account_name'])
         }
         print('{} is online'.format(client_msg['user']['account_name']))
     elif client_msg['action'] == 'msg':
+        message_txt = html2text.html2text(client_msg['message']).strip()
         json_resp = {
             'response': 200,
             'time': time.time(),
-            'alert': 'Message "{}" from {} sent to {}'.format(client_msg['message'], client_msg['from'],
-                                                              client_msg['to'])
+            'alert': '{} {} to {}: {}'.format(str_date, client_msg['from'],
+                                              client_msg['to'], message_txt)
         }
-        print('Message from {}: {}'.format(client_msg['from'], client_msg['message']))
+        print(json_resp['alert'])
     msg = json.dumps(json_resp)
     return msg
 
@@ -70,9 +77,10 @@ def read_requests(r_clients, all_clients):
             data = sock.recv(1024).decode('utf-8')
             requests[sock] = data
             responses[sock] = server_response(data)
-        except ConnectionAbortedError:
+        except ConnectionError:
             tb = traceback.format_exc()
-            print('{} {} disconnected in read_requests with traceback {}'.format(sock.fileno(), sock.getpeername(), tb))
+            # TODO print disconnected client name
+            print('{} disconnected in read_requests '.format(sock.getpeername()))
             all_clients.remove(sock)
     return requests, responses
 
@@ -89,9 +97,7 @@ def write_responses(responses, w_clients, all_clients):
                     client.send(resp)
             except ConnectionAbortedError:  # Сокет недоступен, клиент отключился
                 tb = traceback.format_exc()
-                print(
-                    '{} {} disconnected in write_responses with traceback {}'.format(sock.fileno(), sock.getpeername(),
-                                                                                     tb))
+                print('{} disconnected in write_responses'.format(sock.getpeername()))
                 sock.close()
                 all_clients.remove(sock)
 
@@ -104,6 +110,7 @@ def new_listen_socket(address):
     # Таймаут необходим, чтобы не ждать появления данных в сокете
     sock.settimeout(0.2)
     serv_log.info('Listening port {}'.format(str(address[1])))
+    print('Listening port {}'.format(str(address[1])))
     return sock
 
 
