@@ -4,7 +4,7 @@
 # 4. *Нужно сделать предыдущее задание и добавить смайлы в мессенджер.
 # 5. *Нужно сделать предыдущее задание и применить разные эффекты к изображению в профиле.
 
-import datetime
+import time
 import os.path
 import sys
 
@@ -198,10 +198,10 @@ class Messenger(Messenger_Window):
     def read_messages(self):
         data = self.tcpSocket.readLine().data().decode("utf-8")
         if data:
-            # print(data)
             server_resp = self.jim.parse_server_message(str1=data)
             if self.chat_area.toPlainText() == 'В чат пока ничего не написали':
                 self.chat_area.clear()
+            self.chat_area.append(time.strftime("%Y-%m-%d %H:%M", time.localtime(server_resp['time'])))
             self.chat_area.append(server_resp['alert'])
             # print('\n' + server_resp['alert'])
 

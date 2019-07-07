@@ -5,10 +5,11 @@ import json
 import time
 
 from client_log_config import cli_log
+from server_log_config import serv_log
 
 enable_tracing = False
 
-
+import html2text
 def log(func):
     # print('decorator working')
     if enable_tracing:
@@ -142,7 +143,59 @@ class Jim_client(Json_coder):
 
 
 class Jim_server(Json_coder):
-    '''Creates and packs json messages for all server actions'''
+    '''Parses client messages
+    Creates and packs json messages for all server responses'''
+    SERVER_RESPONSES= {
+        200: 'OK',
+        201: 'Created',
+        202: 'Accepted',
+        400: 'Could not parse message',
+        401: 'Not authorised',
+        402: 'Wrong username or password',
+        403: 'The account is locked',
+        404: 'Not found',
+        409: 'Someone is already connected with the given user name',
+        410: 'Offline',
+        500: 'Internal server error',
+        501: 'Not implemented'
+    }
 
     def __init__(self):
-        super().__init__(self)
+        super().__init__()
+        self.client_list = []
+        self.chat_list = []
+
+    def server_response(self, msg_code):
+        '''returns packed server response for given code'''
+        msg = {
+            'response': msg_code,
+            'time': time.time(),
+            'alert': self.SERVER_RESPONSES[msg_code]
+        }
+        return self.pack(msg)
+
+    def parse_client_message(self, incoming_msg):
+        '''returns packed server response for given incoming msg'''
+        print('Received raw message {} bytes'.format(len(incoming_msg)))
+        if not incoming_msg:
+            return self.server_response(400)
+        try:
+            client_msg = self.unpack(incoming_msg)
+        except json.decoder.JSONDecodeError:
+            serv_log.critical('Message not parsed {}'.format(incoming_msg))
+            return self.server_response(400)
+        if client_msg['action'] == 'presence':
+            print(f'{client_msg["user"]["account_name"]} is online')
+            return self.server_response(200)
+        elif client_msg['action'] == 'msg':  #sent message_to_user or message_chat
+            message_txt = html2text.html2text(client_msg['message']).strip()
+            print(f'message "{message_txt}" from {client_msg["from"]} to {client_msg["to"]}')
+            return self.server_response(200)
+        elif client_msg['action'] == 'join': # joined chat
+            return self.server_response(501)
+        elif client_msg['action'] == 'quit': # went offline
+            return self.server_response(501)
+        elif client_msg['action'] == 'leave':  # left chat
+            return self.server_response(501)
+        else:
+            return self.server_response(500)
