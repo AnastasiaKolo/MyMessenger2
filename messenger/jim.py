@@ -1,21 +1,8 @@
 # -*- coding: utf8 -*-
-# Продолжаем работу над проектом «Мессенджер»:
-# Реализовать обработку нескольких клиентов на сервере, используя функцию select.
-# Клиенты должны общаться в «общем чате»: каждое сообщение участника отправляется всем,
-# подключенным к серверу.
-# Реализовать функции отправки/приема данных на стороне клиента. Чтобы упростить разработку
-# на данном этапе, пусть клиентское приложение будет либо только принимать, либо только
-# отправлять сообщения в общий чат. Эти функции надо реализовать в рамках отдельных скриптов.
 
-
-import argparse
 import inspect
 import json
 import time
-import sys
-from PyQt5.QtCore import QIODevice
-from PyQt5.QtWidgets import (QApplication)
-from PyQt5.QtNetwork import QTcpSocket
 
 from client_log_config import cli_log
 
@@ -36,11 +23,33 @@ def log(func):
         return func
 
 
-class Jim_client:
+class Json_coder:
+    '''
+    Parent class for Jim Client and Jim Server
+    packs json messages to bytes string
+    '''
+
+    def __init__(self):
+        super().__init__()
+        self.encoding = 'utf8'
+
+    def pack(self, dict_msg):
+        str_msg = json.dumps(dict_msg)
+        return str_msg.encode(self.encoding)
+
+    def unpack(self, bt_str):
+        str_decoded = bt_str.decode(self.encoding)
+        return json.loads(str_decoded)
+
+
+class Jim_client(Json_coder):
+    '''Creates and packs json messages for all client actions
+    also parses server messages'''
+
     def __init__(self, user_login: str):
+        super().__init__()
         self.username = user_login
         self.status = 'online'
-        self.encoding = 'utf8'
 
     @log
     def presence(self):  # сформировать presence-сообщение;
@@ -55,7 +64,6 @@ class Jim_client:
         }
         return self.pack(msg)
 
-    @log
     def message_to_user(self, to_user, msg):  # сформировать сообщение;
         msg = {
             'action': 'msg',
@@ -64,6 +72,18 @@ class Jim_client:
             'from': self.username,
             'encoding': 'utf-8',
             'message': msg
+        }
+        return self.pack(msg)
+
+    @log
+    def auth(self, password):
+        msg = {
+            'action': 'authenticate',
+            'time': time.time(),
+            'user': {
+                'account_name': self.username,
+                'password': password
+            }
         }
         return self.pack(msg)
 
@@ -96,13 +116,13 @@ class Jim_client:
         }
         return self.pack(msg)
 
-    def pack(self, dict_msg):
-        str_msg = json.dumps(dict_msg)
-        return str_msg.encode(self.encoding)
-
-    def unpack(self, bt_str):
-        str_decoded = bt_str.decode(self.encoding)
-        return json.loads(str_decoded)
+    def quit(self):
+        msg = {
+            'action': 'quit',
+            'time': time.time(),
+            'from': self.username
+        }
+        return self.pack(msg)
 
     @log
     def parse_server_message(self, str1):  # разобрать сообщение сервера;
@@ -120,3 +140,9 @@ class Jim_client:
                 'alert': 'Server message not parsed: {}'.format(str1)
             }
 
+
+class Jim_server(Json_coder):
+    '''Creates and packs json messages for all server actions'''
+
+    def __init__(self):
+        super().__init__(self)

@@ -18,7 +18,7 @@ from PyQt5.QtCore import QIODevice
 from definitions import IMAGES_PATH
 from profile_window import ProfileWindow
 
-from jim_client import Jim_client
+from jim import Jim_client
 
 
 class Messenger_Window(QMainWindow):

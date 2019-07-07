@@ -16,7 +16,7 @@ class ProfileWindow(QDialog):
     NumButtons = 4
 
     def __init__(self):
-        super(ProfileWindow, self).__init__()
+        super().__init__()
         self.currentImage = ''
         self.init_ui()
 
