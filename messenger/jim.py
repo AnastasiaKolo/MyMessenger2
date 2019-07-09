@@ -35,7 +35,10 @@ class Jim:
         200: 'OK',
         201: 'Created',
         202: 'Accepted',
+        203: 'User is online',
+        204: 'User has joined chat',
         215: 'Sending chat list',
+        216: 'Sending users list',
         400: 'Could not parse message',
         401: 'Not authorised',
         402: 'Wrong username or password',
@@ -63,8 +66,10 @@ class Jim:
     def pack(self, json_list):
         str_msg = ''
         for json_msg in json_list:
-            str_msg += json.dumps(json_msg) + DELIMITER
-        print('packing ( {} )'.format(str_msg))
+            # print('json_msg', json_msg)
+            dumped_json = json.dumps(json_msg)
+            str_msg += dumped_json + DELIMITER
+        # print('packing ( {} )'.format(str_msg))
         return str_msg.encode(self.encoding)
 
     def unpack(self, bt_str):
@@ -165,7 +170,7 @@ class JimClient(Jim):
             'alert': 'Server message not valid: {}'.format(json.dumps(serv_message))
         }
         if 'response' in serv_message.keys():
-            if serv_message['response'] in (200, 201, 202, 215, 400, 401, 402, 403, 404, 409, 410, 500, 501):
+            if serv_message['response'] in self.SERVER_RESPONSES.keys():
                 cli_log.info('Message delivered to server, return code is {}, {}'.format(
                     str(serv_message['response']), serv_message['alert']))
                 return serv_message
@@ -187,6 +192,7 @@ class JimServer(Jim):
 
         self.chats = {}
         self.add_chat('ALL')
+        self.username_clients = {}  # dictionary for translating usernames into client sockets
 
     def add_chat(self, chat_name):
         if len(self.chats.keys()) == 20:
@@ -203,7 +209,38 @@ class JimServer(Jim):
             'alert': self.SERVER_RESPONSES[215],
             'chat_list': ','.join(self.chats.keys())
         }
-        # print(msg)
+        return msg
+
+    def send_user_list(self):
+        '''returns packed server response with online users list'''
+        msg = {
+            'response': 216,
+            'time': time.time(),
+            'alert': self.SERVER_RESPONSES[216],
+            'user_list': ','.join(self.username_clients.keys())
+        }
+        # print('online user list: {}'.format(','.join(self.username_clients.keys())))
+        return msg
+
+    # 203: 'User is online',
+    def info_user_online(self, username):
+        msg = {
+            'response': 203,
+            'time': time.time(),
+            'alert': self.SERVER_RESPONSES[203],
+            'username': username
+        }
+        return msg
+
+    # 204: 'User has joined chat',
+    def info_user_in_chat(self, username, chat):
+        msg = {
+            'response': 204,
+            'time': time.time(),
+            'alert': self.SERVER_RESPONSES[204],
+            'username': username,
+            'chat': chat
+        }
         return msg
 
     def parse_client_message(self, incoming_msg):
@@ -213,14 +250,15 @@ class JimServer(Jim):
         try:
             if incoming_msg['action'] == 'presence':
                 print(f'{incoming_msg["user"]["account_name"]} is online')
-                return self.send_chat_list()
+                return self.server_response(200)
             elif incoming_msg['action'] == 'msg':  # sent message_to_user or message_chat
                 message_txt = html2text.html2text(incoming_msg['message']).strip()
                 print(f'message "{message_txt}" from {incoming_msg["from"]} to {incoming_msg["to"]}')
                 return self.server_response(200)
             elif incoming_msg['action'] == 'join':  # join chat
                 if incoming_msg['chat'] in self.chats.keys():
-                    self.chats[incoming_msg['chat']].append(incoming_msg['from'])
+                    if not incoming_msg['from'] in self.chats[incoming_msg['chat']]:
+                        self.chats[incoming_msg['chat']].append(incoming_msg['from'])
                     return self.server_response(202)
                 else:
                     return self.server_response(404)

@@ -43,6 +43,10 @@ class Worker:
                 if message['action'] == 'presence':
                     self.client_name = message['user']['account_name']
                     messaging_server.username_clients[self.client_name] = self.sock
+                    msg_broadcast = messaging_server.info_user_online(self.client_name)
+                    messaging_server.broadcast_server_message(msg_broadcast)
+                    self.queue_out.append(messaging_server.send_chat_list())
+                    self.queue_out.append(messaging_server.send_user_list())
                 elif message['action'] == 'msg':
                     # if message to user then find the user and put message in user's messages queue
                     # if message to chat then find all users of the chat and put message in their queues
@@ -53,8 +57,14 @@ class Worker:
                     elif destination in messaging_server.username_clients.keys():
                         users_list = [destination]
                     for receiver in users_list:
-                        sock = messaging_server.username_clients[receiver]
-                        messaging_server.workers[sock].queue_out.append(message)
+                        try:
+                            sock = messaging_server.username_clients[receiver]
+                            messaging_server.workers[sock].queue_out.append(message)
+                        except KeyError:
+                            print('KeyError', messaging_server.username_clients, users_list)
+                elif message['action'] == 'join':
+                    msg_broadcast = messaging_server.info_user_in_chat(self.client_name,  message['chat'])
+                    messaging_server.broadcast_server_message(msg_broadcast, message['chat'])
             # clear raw data
             self.raw_in = b''
 
@@ -87,14 +97,35 @@ class Server(JimServer):
         address = ('', args.port)
         self.clients = []  # list of currently connected client sockets
         self.workers = {}  # dictionary, key = client, value = worker workers for each socket
-        self.username_clients = {}  # dictionary for translating usernames into client sockets
+
         self.sock = new_listen_socket(address)
 
     def disconnect_client(self, client_socket):
         client_socket.close()
         self.clients.remove(client_socket)
+        for chat, userlist in self.chats.items():
+            userlist.remove(self.workers[client_socket].client_name)
         self.username_clients.pop(self.workers[client_socket].client_name)
         self.workers.pop(client_socket)
+
+
+    def broadcast_server_message(self, msg, chat=None):
+        if chat:
+            # send message to all chat users
+            users_list = []
+            if chat in self.chats.keys():
+                users_list = self.chats[chat]
+            for receiver in users_list:
+                try:
+                    sock = self.username_clients[receiver]
+                    self.workers[sock].queue_out.append(msg)
+                except KeyError:
+                    print('KeyError', self.username_clients)
+        else:
+            # send message to all connected users
+            for c in self.clients:
+                self.workers[c].queue_out.append(msg)
+
 
     def process_data(self, client_socket):
         if self.workers[client_socket].raw_in:
@@ -123,6 +154,7 @@ class Server(JimServer):
             print('worker not found for {} '.format(client_socket))
             return
         if worker.queue_out:
+            # print('queue_out', worker.queue_out)
             raw_out = self.pack(worker.queue_out)
             worker.queue_out = []
             try:
@@ -146,20 +178,24 @@ class Server(JimServer):
                 finally:
                     r = []
                     w = []
+                    e = []
                     try:
                         r, w, e = select.select(self.clients, self.clients, [], 0)
                     except OSError:
-                        pass  # Ничего не делать, если какой-то клиент отключился
+                        pass  # timeout
+                    for sock in e:
+                        # sockets disconnected
+                        self.disconnect_client(sock)
                     for sock in r:  # sockets that can be read
                         self.receive_data(sock)
-                    for sock in self.clients:
-                        if self.workers[sock].raw_in or self.workers[sock].queue_out:
-                            print('-------{}'.format(self.workers[sock]))
+                    # for sock in self.clients:
+                    #     if self.workers[sock].raw_in or self.workers[sock].queue_out:
+                    #         print('-------{}'.format(self.workers[sock]))
                     for sock in self.clients:
                         self.process_data(sock)
-                    for sock in self.clients:
-                        if self.workers[sock].raw_in or self.workers[sock].queue_out:
-                            print('+++++++{}'.format(self.workers[sock]))
+                    # for sock in self.clients:
+                    #     if self.workers[sock].raw_in or self.workers[sock].queue_out:
+                    #         print('+++++++{}'.format(self.workers[sock]))
                     for sock in w:  # sockets that can be written to
                         self.send_data(sock)
         except KeyboardInterrupt:

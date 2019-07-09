@@ -36,6 +36,7 @@ class Messenger_Window(QMainWindow):
         self.chat_area = QTextEdit('В чат пока ничего не написали', readOnly=True, )
         self.chat_area.setFont(myFont)
         self.chat_label = QLabel()
+        self.chat_label.setFont(myFont)
         self.message_area = QTextEdit('Введите сообщение')
         self.message_area.setFont(myFont)
         self.message_area.setMaximumHeight(100)
@@ -71,6 +72,7 @@ class Messenger_Window(QMainWindow):
         random_icon = QIcon(os.path.join(IMAGES_PATH, 'magic-wand.png'))
         exit_icon = QIcon(os.path.join(IMAGES_PATH, 'exit.png'))
         join_chat_icon = QIcon(os.path.join(IMAGES_PATH, 'users-1.png'))
+        contact_user_icon = QIcon(os.path.join(IMAGES_PATH, 'users-4.png'))
         self.save_action = QAction(save_icon, 'Save chat as...', self, shortcut='Ctrl+S', triggered=self.dialog_save)
         self.send_action = QAction(send_icon, 'Send message', self, shortcut='Ctrl+Enter', triggered=self.send)
         self.edit_profile_action = QAction(profile_icon, 'Edit profile', self, triggered=self.edit_profile)
@@ -81,7 +83,8 @@ class Messenger_Window(QMainWindow):
         self.logon_action = QAction(logon_icon, 'Logon', self, triggered=self.logon)
         self.random_action = QAction(random_icon, 'Random message!', self, triggered=self.random_message)
         self.exit_action = QAction(exit_icon, 'Exit', self, triggered=self.exit)
-        self.join_chat_action = QAction(join_chat_icon, 'Join chat', self, triggered=self.dialog_join_chat)
+        self.join_chat_action = QAction(join_chat_icon, 'Select chat', self, triggered=self.dialog_join_chat)
+        self.contact_user_action = QAction(contact_user_icon, 'Select user', self, triggered=self.dialog_contact_user)
 
     def exit(self):
         self.before_exit()
@@ -89,13 +92,15 @@ class Messenger_Window(QMainWindow):
 
     def init_tool_bar(self):
         toolbar = QToolBar()
-        toolbar.setIconSize(QSize(50, 50))
+        toolbar.setIconSize(QSize(30, 30))
         toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon | Qt.AlignLeading)  # <= Toolbuttonstyle
         self.addToolBar(Qt.LeftToolBarArea, toolbar)
         self.toolbar = toolbar
         self.toolbar.addAction(self.logon_action)
         self.toolbar.addSeparator()
         self.toolbar.addAction(self.join_chat_action)
+        self.toolbar.addSeparator()
+        self.toolbar.addAction(self.contact_user_action)
         self.toolbar.addSeparator()
         self.toolbar.addAction(self.edit_profile_action)
         self.toolbar.addSeparator()
@@ -185,7 +190,9 @@ class Messenger(Messenger_Window):
         self.jim = None
         self.connected = False
         self.chat_list = []
+        self.online_users = []
         self.logon()
+        self.active_chat = ''
         # self.last_sent_message = ''
 
     def logon(self):
@@ -199,7 +206,7 @@ class Messenger(Messenger_Window):
             self.setWindowTitle('My awesome client: connected as {}'.format(username))
             self.tcpSocket.connectToHost(self.host, self.port, QIODevice.ReadWrite)
             # self.tcpSocket.waitForConnected()
-            self.chat_label.setText('Connected to server...')
+            self.chat_label.setText('Please join chat...')
             self.tcpSocket.readyRead.connect(self.read_messages)
             self.tcpSocket.error.connect(self.display_error)
             self.tcpSocket.write(self.jim.presence())
@@ -213,7 +220,7 @@ class Messenger(Messenger_Window):
             self.connected = False
 
     def before_exit(self):
-        msg = self.jim.quit().pack()
+        msg = self.jim.quit()
         self.tcpSocket.write(msg)
         # print('Message length is {}, message={}'.format(len(msg), msg))
         self.tcpSocket.disconnectFromHost()
@@ -229,6 +236,17 @@ class Messenger(Messenger_Window):
                 self.tcpSocket.write(msg)
                 self.chat_area.clear()
                 self.enable_communication_buttons(True)
+                self.active_chat = chat
+
+    def dialog_contact_user(self):
+        # print(self.chat_list)
+        if self.connected:
+            user, ok = QInputDialog.getItem(self, 'Пользователи онлайн', 'Выберите пользователя', self.online_users, 0, False)
+            if ok and user:
+                self.chat_label.setText('Dialog with ' + user)
+                self.chat_area.clear()
+                self.enable_communication_buttons(True)
+                self.active_chat = user
 
     def random_message(self):
         message = self.RANDOM_MESSAGES[random.randint(0, len(self.RANDOM_MESSAGES) - 1)]
@@ -237,20 +255,30 @@ class Messenger(Messenger_Window):
         self.send()
 
     def read_messages(self):
-        data = self.tcpSocket.readLine().data()
-        while data:
+        data = self.tcpSocket.readAll().data()
+        if data:
             received_messages = self.jim.unpack(data)
             for msg in received_messages:
                 server_resp = self.jim.parse_server_message(msg)
                 if 'response' in server_resp.keys():
                     print('received server message {} "{}"'.format(server_resp['response'], server_resp['alert']))
-                    if server_resp['response'] in (200, 201):
+                    if server_resp['response'] in (200, 201): # everything OK
                         # self.chat_area.append(time.strftime("%Y-%m-%d %H:%M", time.localtime(server_resp['time'])))
                         # self.chat_area.append('{}: {}'.format(self.jim.username, self.last_sent_message))
                         pass
+                    elif server_resp['response'] == 203:  # a user is online
+                        if not server_resp['username'] in self.online_users:
+                            self.online_users.append(server_resp['username'])
+                    elif server_resp['response'] == 204:  # a user has joined chat
+                        if self.active_chat == server_resp['chat']:
+                            self.chat_area.append(time.strftime("%Y-%m-%d %H:%M", time.localtime(server_resp['time'])))
+                            self.chat_area.append('{} has joined this chat'.format(server_resp['username']))
                     elif server_resp['response'] == 215:
                         # received chat list
                         self.chat_list = server_resp['chat_list'].split(',')
+                    elif server_resp['response'] == 216:
+                        # received users list
+                        self.online_users = server_resp['user_list'].split(',')
                     elif server_resp['response'] >= 400:
                         # received an error
                         self.chat_area.append(time.strftime("%Y-%m-%d %H:%M", time.localtime(server_resp['time'])))
@@ -259,10 +287,12 @@ class Messenger(Messenger_Window):
                     # received a message
                     if self.chat_area.toPlainText() == 'В чат пока ничего не написали':
                         self.chat_area.clear()
-                    self.chat_area.append(time.strftime("%Y-%m-%d %H:%M", time.localtime(server_resp['time'])))
-                    self.chat_area.append('{}: {}'.format(server_resp['from'], server_resp['message']))
+                    # TODO here is an assumption that message is to chat or from user
+                    if server_resp['from'] != self.jim.username and self.active_chat in (server_resp['to'], server_resp['from']):
+                        self.chat_area.append(time.strftime("%Y-%m-%d %H:%M", time.localtime(server_resp['time'])))
+                        self.chat_area.append('{}: {}'.format(server_resp['from'], server_resp['message']))
                     # print('\n' + server_resp['alert'])
-            data = self.tcpSocket.readLine().data()
+
 
     def display_error(self):
         self.chat_area.append(time.strftime("%Y-%m-%d %H:%M", time.localtime()))
@@ -272,9 +302,6 @@ class Messenger(Messenger_Window):
         self.setWindowTitle('My awesome client: disconnected')
 
     def send(self):
-        # self.chat_area.append(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        # TODO refuse empty messages
-        # self.chat_area.append(self.message_area.toHtml())
         # message_html = self.message_area.toHtml()
         message_txt = self.message_area.toPlainText()
         msg_len = len(message_txt)
@@ -284,10 +311,12 @@ class Messenger(Messenger_Window):
             pass  # self.errorMessageDialog.showMessage('Warning: Message is empty')
         else:
             # message_txt = self.message_area.toPlainText()
-            message_json_packed = self.jim.message('ALL', message_txt)
+            message_json_packed = self.jim.message(self.active_chat, message_txt)
             # print(message_json_packed)
             # print("Message length is {}".format(len(message_json_packed)))
             self.tcpSocket.write(message_json_packed)
+            self.chat_area.append(time.strftime("%Y-%m-%d %H:%M"))
+            self.chat_area.append('{}: {}'.format(self.jim.username, message_txt))
             self.message_area.clear()
             self.message_area.setFocus()
             # self.last_sent_message = message_txt

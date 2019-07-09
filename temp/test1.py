@@ -104,7 +104,8 @@ msg = {
         'alert': 'some alert'
         }
 print(msg['response'])
-print('response' in msg.keys())
+import time
+print(time.strftime("%Y-%m-%d %H:%M"))
 # print(msg['nnn'])
 #
 # string1 = 'Connected'
