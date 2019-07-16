@@ -76,7 +76,23 @@ class AwesomDBClient(MongoClient):
         else:
             return None
 
-
+    def get_messages(self, sender, receiver, ncount):
+        messages = []
+        search_condition = {}
+        # first of all, define if messages to user or to chat were requested
+        x = self.chat_collection.find_one({'chat': receiver})
+        if x:
+            search_condition = {'to': receiver}
+        y = self.profile_collection.find_one({'username': receiver})
+        if y:
+            search_condition = {'from': sender, 'to': receiver}
+        if search_condition:
+            for z in self.message_collection.find(search_condition):
+                current_msg = dict(z)
+                current_msg.pop('_id')
+                current_msg.pop('timestamp')
+                messages.append(current_msg)
+        return messages
 
 if __name__ == '__main__':
     # db initialization

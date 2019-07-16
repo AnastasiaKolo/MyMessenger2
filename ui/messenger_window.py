@@ -131,7 +131,6 @@ class Messenger_Window(QMainWindow):
         self.message_area.setEnabled(state)
         self.contact_user_action.setEnabled(state)
 
-
     def insert_smile(self):
         # TODO insert smiles in unicode
         url = os.path.join(IMAGES_PATH, 'croco-small.png')
@@ -223,7 +222,6 @@ class Messenger(Messenger_Window):
         # print('Message length is {}, message={}'.format(len(msg), msg))
         self.tcpSocket.disconnectFromHost()
 
-
     def dialog_join_chat(self):
         # print(self.chat_list)
         if self.connected:
@@ -239,7 +237,8 @@ class Messenger(Messenger_Window):
     def dialog_contact_user(self):
         # print(self.chat_list)
         if self.connected:
-            user, ok = QInputDialog.getItem(self, 'Пользователи онлайн', 'Выберите пользователя', self.online_users, 0, False)
+            user, ok = QInputDialog.getItem(self, 'Пользователи онлайн', 'Выберите пользователя', self.online_users, 0,
+                                            False)
             if ok and user:
                 self.chat_label.setText('Dialog with ' + user)
                 self.chat_area.clear()
@@ -260,7 +259,7 @@ class Messenger(Messenger_Window):
                 server_resp = self.jim.parse_server_message(msg)
                 if 'response' in server_resp.keys():
                     print('received server message {} "{}"'.format(server_resp['response'], server_resp['alert']))
-                    if server_resp['response'] in (200, 201): # everything OK
+                    if server_resp['response'] in (200, 201):  # everything OK
                         # self.chat_area.append(time.strftime("%Y-%m-%d %H:%M", time.localtime(server_resp['time'])))
                         # self.chat_area.append('{}: {}'.format(self.jim.username, self.last_sent_message))
                         pass
@@ -281,16 +280,18 @@ class Messenger(Messenger_Window):
                         # received an error
                         self.chat_area.append(time.strftime("%Y-%m-%d %H:%M", time.localtime(server_resp['time'])))
                         self.chat_area.append(server_resp['alert'])
-                elif 'message' in server_resp.keys():
+                elif 'message' in server_resp:
                     # received a message
                     if self.chat_area.toPlainText() == 'В чат пока ничего не написали':
                         self.chat_area.clear()
                     # TODO here is an assumption that message is to chat or from user
-                    if server_resp['from'] != self.jim.username and self.active_chat in (server_resp['to'], server_resp['from']):
+                    # if message to current chat or dialog then display it
+                    if (server_resp['from'] == self.jim.username) and \
+                            (server_resp['from'] == self.active_chat and server_resp['to'] == self.jim.username) or \
+                            (self.active_chat == server_resp['to']):
                         self.chat_area.append(time.strftime("%Y-%m-%d %H:%M", time.localtime(server_resp['time'])))
                         self.chat_area.append('{}: {}'.format(server_resp['from'], server_resp['message']))
                     # print('\n' + server_resp['alert'])
-
 
     def display_error(self):
         self.chat_area.append(time.strftime("%Y-%m-%d %H:%M", time.localtime()))
