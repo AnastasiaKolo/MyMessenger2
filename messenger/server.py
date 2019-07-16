@@ -59,11 +59,12 @@ class Worker:
                     elif destination in messaging_server.username_clients.keys():
                         users_list = [destination]
                     for receiver in users_list:
-                        try:
-                            sock = messaging_server.username_clients[receiver]
-                            messaging_server.workers[sock].queue_out.append(message)
-                        except KeyError:
-                            print('KeyError', messaging_server.username_clients, users_list)
+                        if receiver in messaging_server.username_clients:
+                            try:
+                                sock = messaging_server.username_clients[receiver]
+                                messaging_server.workers[sock].queue_out.append(message)
+                            except KeyError:
+                                print('KeyError1', messaging_server.username_clients, users_list)
                 elif message['action'] == 'join':
                     msg_broadcast = messaging_server.info_user_in_chat(self.client_name,  message['chat'])
                     messaging_server.broadcast_server_message(msg_broadcast, message['chat'])
@@ -117,14 +118,16 @@ class Server(JimServer):
         if chat:
             # send message to all chat users
             users_list = []
-            if chat in self.chats.keys():
+            if chat in self.chats:
                 users_list = self.chats[chat]
             for receiver in users_list:
-                try:
-                    sock = self.username_clients[receiver]
-                    self.workers[sock].queue_out.append(msg)
-                except KeyError:
-                    print('KeyError', self.username_clients)
+                # check if receiver is online
+                if receiver in self.username_clients:
+                    try:
+                        sock = self.username_clients[receiver]
+                        self.workers[sock].queue_out.append(msg)
+                    except KeyError:
+                        print('KeyError2', self.username_clients, users_list)
         else:
             # send message to all connected users
             for c in self.clients:
