@@ -10,7 +10,8 @@ from socket import *
 import datetime
 import asyncio
 from definitions import IMAGES_PATH
-from server_log_config import serv_log
+from server_log_config import serv_log, logging_file
+print('Логирование настроено в {}'.format(logging_file))
 from jim import JimServer
 
 

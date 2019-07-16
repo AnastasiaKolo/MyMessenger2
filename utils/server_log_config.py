@@ -24,7 +24,7 @@ if not os.path.exists(LOG_PATH):
 if not os.path.exists(LOG_PATH):
     os.mkdir(LOG_PATH)
 logging_file = os.path.join(LOG_PATH, 'server.log')
-print('Логирование настроено в {}'.format(logging_file))
+
 
 # Создать регистратор верхнего уровня с именем 'server'
 serv_log = logging.getLogger('server')

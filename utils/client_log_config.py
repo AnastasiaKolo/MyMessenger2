@@ -21,7 +21,7 @@ from definitions import LOG_PATH
 if not os.path.exists(LOG_PATH):
     os.mkdir(LOG_PATH)
 logging_file = os.path.join(LOG_PATH, 'client.log')
-print('Логирование настроено в {}'.format(logging_file))
+
 
 # Создать регистратор верхнего уровня с именем 'client'
 cli_log = logging.getLogger('client')
