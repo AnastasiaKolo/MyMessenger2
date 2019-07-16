@@ -7,6 +7,7 @@ import html2text
 
 from client_log_config import cli_log
 from server_log_config import serv_log
+from mongo_client import AwesomDBClient
 
 enable_tracing = False
 DELIMITER = '\n\r'
@@ -191,8 +192,10 @@ class JimServer(Jim):
         super().__init__()
 
         self.chats = {}
-        self.add_chat('ALL')
         self.username_clients = {}  # dictionary for translating usernames into client sockets
+        self.dbclient = AwesomDBClient('mongodb://localhost:27017/')
+        self.chats = self.dbclient.get_chats()
+
 
     def add_chat(self, chat_name):
         if len(self.chats.keys()) == 20:
@@ -200,6 +203,7 @@ class JimServer(Jim):
         if chat_name in self.chats.keys():
             NameError('Chat already exists')
         self.chats[chat_name] = []
+        self.dbclient.add_chat({'chat': chat_name, 'userlist': []})
 
     def send_chat_list(self):
         '''returns packed server response with chat list'''
@@ -259,6 +263,7 @@ class JimServer(Jim):
                 if incoming_msg['chat'] in self.chats.keys():
                     if not incoming_msg['from'] in self.chats[incoming_msg['chat']]:
                         self.chats[incoming_msg['chat']].append(incoming_msg['from'])
+                        self.dbclient.add_users_to_chat(incoming_msg['chat'], incoming_msg['from'])
                     return self.server_response(202)
                 else:
                     return self.server_response(404)

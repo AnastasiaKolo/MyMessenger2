@@ -1,8 +1,4 @@
 # -*- coding: utf-8 -*-
-# 2. Добавить форматирование в сообщения в вашем мессенджере.
-# 3. Реализовать возможность добавления фотографии в ваш профиль.
-# 4. *Нужно сделать предыдущее задание и добавить смайлы в мессенджер.
-# 5. *Нужно сделать предыдущее задание и применить разные эффекты к изображению в профиле.
 
 import time
 import os.path
@@ -72,7 +68,7 @@ class Messenger_Window(QMainWindow):
         random_icon = QIcon(os.path.join(IMAGES_PATH, 'magic-wand.png'))
         exit_icon = QIcon(os.path.join(IMAGES_PATH, 'exit.png'))
         join_chat_icon = QIcon(os.path.join(IMAGES_PATH, 'users-1.png'))
-        contact_user_icon = QIcon(os.path.join(IMAGES_PATH, 'users-4.png'))
+        contact_user_icon = QIcon(os.path.join(IMAGES_PATH, 'user-4.png'))
         self.save_action = QAction(save_icon, 'Save chat as...', self, shortcut='Ctrl+S', triggered=self.dialog_save)
         self.send_action = QAction(send_icon, 'Send message', self, shortcut='Ctrl+Enter', triggered=self.send)
         self.edit_profile_action = QAction(profile_icon, 'Edit profile', self, triggered=self.edit_profile)
@@ -133,6 +129,7 @@ class Messenger_Window(QMainWindow):
         self.italic_action.setEnabled(state)
         self.underline_action.setEnabled(state)
         self.message_area.setEnabled(state)
+        self.contact_user_action.setEnabled(state)
 
 
     def insert_smile(self):

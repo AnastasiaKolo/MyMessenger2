@@ -14,6 +14,7 @@ from server_log_config import serv_log
 from jim import JimServer
 
 
+
 class Worker:
     '''manages client messages'''
 
@@ -100,11 +101,13 @@ class Server(JimServer):
 
         self.sock = new_listen_socket(address)
 
+
     def disconnect_client(self, client_socket):
         client_socket.close()
         self.clients.remove(client_socket)
         for chat, userlist in self.chats.items():
-            userlist.remove(self.workers[client_socket].client_name)
+            if self.workers[client_socket].client_name in userlist:
+                userlist.remove(self.workers[client_socket].client_name)
         self.username_clients.pop(self.workers[client_socket].client_name)
         self.workers.pop(client_socket)
 
@@ -151,7 +154,7 @@ class Server(JimServer):
             worker = self.workers[client_socket]
         except KeyError:
             # client has already disconnected, nobody to send data
-            print('worker not found for {} '.format(client_socket))
+            # print('worker not found for {} '.format(client_socket))
             return
         if worker.queue_out:
             # print('queue_out', worker.queue_out)
