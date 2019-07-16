@@ -67,9 +67,10 @@ class Jim:
     def pack(self, json_list):
         str_msg = ''
         for json_msg in json_list:
-            # print('json_msg', json_msg)
+            # print('pack json_msg', json_msg)
             dumped_json = json.dumps(json_msg)
             str_msg += dumped_json + DELIMITER
+            # print('pack ok')
         # print('packing ( {} )'.format(str_msg))
         return str_msg.encode(self.encoding)
 
@@ -258,6 +259,7 @@ class JimServer(Jim):
             elif incoming_msg['action'] == 'msg':  # sent message_to_user or message_chat
                 message_txt = html2text.html2text(incoming_msg['message']).strip()
                 print(f'message "{message_txt}" from {incoming_msg["from"]} to {incoming_msg["to"]}')
+                self.dbclient.add_message(incoming_msg)
                 return self.server_response(200)
             elif incoming_msg['action'] == 'join':  # join chat
                 if incoming_msg['chat'] in self.chats.keys():

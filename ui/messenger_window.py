@@ -206,6 +206,7 @@ class Messenger(Messenger_Window):
             self.chat_label.setText('Please join chat...')
             self.tcpSocket.readyRead.connect(self.read_messages)
             self.tcpSocket.error.connect(self.display_error)
+            # self.tcpSocket.write(self.jim.auth())
             self.tcpSocket.write(self.jim.presence())
             self.connected = True
             # self.tcpSocket.write(self.jim.request_chat_list())
@@ -296,6 +297,7 @@ class Messenger(Messenger_Window):
         self.chat_area.append('Connection error')
         self.chat_label.setText('Disconnected')
         self.enable_server_buttons(False)
+        self.enable_communication_buttons(False)
         self.setWindowTitle('My awesome client: disconnected')
 
     def send(self):

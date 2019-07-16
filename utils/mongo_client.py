@@ -29,10 +29,13 @@ class AwesomDBClient(MongoClient):
             return {'result': 'error', 'msg': 'profile {} already exists'.format(doc['username'])}
 
     def add_message(self, doc):
-        if not 'msg' in doc or not 'from' in doc or not 'to' in doc:
+        # message format example
+        # {'msg': 'Hello', 'from': 'Nastya', 'to': 'ALL', 'time': 'ttt', 'encoding': 'utf-8'}
+        if not 'message' in doc or not 'from' in doc or not 'to' in doc:
             return {'result': 'error', 'msg': 'must contain fields: message, from, to'}
-        doc['timestamp'] = time.time()
-        self.message_collection.insert_one(doc)
+        message_to_db = dict(doc)  # make a copy of original message
+        message_to_db['timestamp'] = time.time()
+        self.message_collection.insert_one(message_to_db)
         return {'result': 'ok'}
 
     def add_chat(self, doc):
