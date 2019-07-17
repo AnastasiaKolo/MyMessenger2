@@ -66,13 +66,14 @@ class Worker:
                             except KeyError:
                                 print('KeyError1', messaging_server.username_clients, users_list)
                 elif message['action'] == 'join':
-                    msg_broadcast = messaging_server.info_user_in_chat(self.client_name,  message['chat'])
-                    messaging_server.broadcast_server_message(msg_broadcast, message['chat'])
                     messages_to_client = messaging_server.dbclient.get_messages(self.client_name,  message['chat'], 10)
-                    print('len {}'.format(len(messages_to_client)))
-                    print('messages_to_client {}'.format(messages_to_client))
                     for msg in messages_to_client:
                         self.queue_out.append(msg)
+                    msg_broadcast = messaging_server.info_user_in_chat(self.client_name, message['chat'])
+                    messaging_server.broadcast_server_message(msg_broadcast, message['chat'])
+                    # print('len {}'.format(len(messages_to_client)))
+                    # print('messages_to_client {}'.format(messages_to_client))
+
             # clear raw data
             self.raw_in = b''
 

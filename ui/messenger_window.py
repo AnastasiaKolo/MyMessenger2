@@ -6,7 +6,7 @@ import sys
 
 import random
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QIcon, QFont
+from PyQt5.QtGui import QIcon, QFont, QColor
 from PyQt5.QtWidgets import (QMainWindow, QToolBar, QLineEdit, QErrorMessage, QInputDialog, QLabel,
                              QAction, QFileDialog, qApp, QApplication, QTextEdit, QSplitter)
 from PyQt5.QtNetwork import QTcpSocket
@@ -69,6 +69,7 @@ class Messenger_Window(QMainWindow):
         exit_icon = QIcon(os.path.join(IMAGES_PATH, 'exit.png'))
         join_chat_icon = QIcon(os.path.join(IMAGES_PATH, 'users-1.png'))
         contact_user_icon = QIcon(os.path.join(IMAGES_PATH, 'user-4.png'))
+        debug_icon = QIcon(os.path.join(IMAGES_PATH, 'settings-1'))
         self.save_action = QAction(save_icon, 'Save chat as...', self, shortcut='Ctrl+S', triggered=self.dialog_save)
         self.send_action = QAction(send_icon, 'Send message', self, shortcut='Ctrl+Enter', triggered=self.send)
         self.edit_profile_action = QAction(profile_icon, 'Edit profile', self, triggered=self.edit_profile)
@@ -81,6 +82,7 @@ class Messenger_Window(QMainWindow):
         self.exit_action = QAction(exit_icon, 'Exit', self, triggered=self.exit)
         self.join_chat_action = QAction(join_chat_icon, 'Select chat', self, triggered=self.dialog_join_chat)
         self.contact_user_action = QAction(contact_user_icon, 'Select user', self, triggered=self.dialog_contact_user)
+        self.debug_action = QAction(debug_icon, 'Debug', self, triggered=self.debug)
 
     def exit(self):
         self.before_exit()
@@ -110,6 +112,10 @@ class Messenger_Window(QMainWindow):
         self.toolbar.addAction(self.underline_action)
         self.toolbar.addAction(self.smile_action)
         self.toolbar.addAction(self.exit_action)
+        self.toolbar.addSeparator()
+        self.toolbar.addSeparator()
+        self.toolbar.addSeparator()
+        self.toolbar.addAction(self.debug_action)
         self.toolbar.setMovable(False)
 
     def enable_actions(self, state):
@@ -120,6 +126,7 @@ class Messenger_Window(QMainWindow):
         self.send_action.setEnabled(state)
         self.edit_profile_action.setEnabled(state)
         self.join_chat_action.setEnabled(state)
+        self.contact_user_action.setEnabled(state)
 
     def enable_communication_buttons(self, state):
         self.send_action.setEnabled(state)
@@ -129,7 +136,7 @@ class Messenger_Window(QMainWindow):
         self.italic_action.setEnabled(state)
         self.underline_action.setEnabled(state)
         self.message_area.setEnabled(state)
-        self.contact_user_action.setEnabled(state)
+
 
     def insert_smile(self):
         # TODO insert smiles in unicode
@@ -187,9 +194,35 @@ class Messenger(Messenger_Window):
         self.connected = False
         self.chat_list = []
         self.online_users = []
-        self.logon()
         self.active_chat = ''
+        self.logon()
+
         # self.last_sent_message = ''
+
+    def reset_connection(self):
+        if self.connected:
+            self.tcpSocket.disconnect()
+        self.jim = None
+        self.connected = False
+        self.chat_list = []
+        self.online_users = []
+        self.active_chat = ''
+        self.enable_server_buttons(False)
+        self.enable_communication_buttons(False)
+        self.setWindowTitle('My awesome client: disconnected')
+        self.chat_label.setText('Disconnected')
+
+
+    def debug(self):
+        print('chat_list='+','.join(self.chat_list))
+        print('online_users=' + ','.join(self.online_users))
+        print('active_chat={}'.format(self.active_chat))
+        try:
+            print('username={}'.format(self.jim.username))
+        except:
+            print('username is none')
+        print('connected={}'.format(self.connected))
+
 
     def logon(self):
         if self.connected:
@@ -211,16 +244,17 @@ class Messenger(Messenger_Window):
             # self.tcpSocket.write(self.jim.request_chat_list())
             self.chat_area.clear()
         else:
-            self.enable_server_buttons(False)
-            self.enable_communication_buttons(False)
-            self.setWindowTitle('My awesome client: disconnected')
-            self.connected = False
+            self.reset_connection()
 
     def before_exit(self):
-        msg = self.jim.quit()
-        self.tcpSocket.write(msg)
-        # print('Message length is {}, message={}'.format(len(msg), msg))
-        self.tcpSocket.disconnectFromHost()
+        print('Exiting!')
+        if self.jim:
+            msg = self.jim.quit()
+            self.tcpSocket.write(msg)
+            time.sleep(5)
+            print('Exiting! Message length is {}, message={}'.format(len(msg), msg))
+        if self.connected:
+            self.tcpSocket.disconnectFromHost()
 
     def dialog_join_chat(self):
         # print(self.chat_list)
@@ -257,7 +291,7 @@ class Messenger(Messenger_Window):
             received_messages = self.jim.unpack(data)
             for msg in received_messages:
                 server_resp = self.jim.parse_server_message(msg)
-                if 'response' in server_resp.keys():
+                if 'response' in server_resp:
                     print('received server message {} "{}"'.format(server_resp['response'], server_resp['alert']))
                     if server_resp['response'] in (200, 201):  # everything OK
                         # self.chat_area.append(time.strftime("%Y-%m-%d %H:%M", time.localtime(server_resp['time'])))
@@ -268,8 +302,15 @@ class Messenger(Messenger_Window):
                             self.online_users.append(server_resp['username'])
                     elif server_resp['response'] == 204:  # a user has joined chat
                         if self.active_chat == server_resp['chat']:
+                            # redColor = QColor(255, 0, 0)
+                            # blackColor = QColor(0, 0, 0)
+                            # tmpFont = QFont('Arial', pointSize=10, weight=400)
+                            # self.chat_area.setTextColor(redColor)
+                            # self.chat_area.setFont(tmpFont)
                             self.chat_area.append(time.strftime("%Y-%m-%d %H:%M", time.localtime(server_resp['time'])))
                             self.chat_area.append('{} has joined this chat'.format(server_resp['username']))
+                            # self.chat_area.setFont(self.font)
+                            # self.chat_area.setTextColor(blackColor)
                     elif server_resp['response'] == 215:
                         # received chat list
                         self.chat_list = server_resp['chat_list'].split(',')
@@ -284,25 +325,24 @@ class Messenger(Messenger_Window):
                     # received a message
                     if self.chat_area.toPlainText() == 'В чат пока ничего не написали':
                         self.chat_area.clear()
-                    # TODO here is an assumption that message is to chat or from user
                     # if message to current chat or dialog then display it
-                    # TODO incorrect display of received old message pack
                     if (server_resp['from'] == self.active_chat and server_resp['to'] == self.jim.username) or \
-                            (self.active_chat == server_resp['to'] and server_resp['from'] != self.jim.username):
+                            (self.active_chat == server_resp['to']) or \
+                            (server_resp['from'] == self.jim.username and server_resp['to'] == self.active_chat):
                         self.display_message(server_resp)
-                    # print('\n' + server_resp['alert'])
+                    print('received message {}'.format(server_resp))
+                else:
+                    print('something wrong in read_messages {}'.format(msg))
 
-    def display_message(self, server_resp ):
+    def display_message(self, server_resp):
         self.chat_area.append(time.strftime("%Y-%m-%d %H:%M", time.localtime(server_resp['time'])))
         self.chat_area.append('{}: {}'.format(server_resp['from'], server_resp['message']))
 
     def display_error(self):
         self.chat_area.append(time.strftime("%Y-%m-%d %H:%M", time.localtime()))
         self.chat_area.append('Connection error')
-        self.chat_label.setText('Disconnected')
-        self.enable_server_buttons(False)
-        self.enable_communication_buttons(False)
-        self.setWindowTitle('My awesome client: disconnected')
+        self.reset_connection()
+
 
     def send(self):
         # message_html = self.message_area.toHtml()
@@ -311,18 +351,12 @@ class Messenger(Messenger_Window):
         if msg_len > 512:
             self.errorMessageDialog.showMessage('Warning: Message {} bytes too long, max 512'.format(msg_len))
         elif not message_txt:
-            pass  # self.errorMessageDialog.showMessage('Warning: Message is empty')
+            pass
         else:
-            # message_txt = self.message_area.toPlainText()
             message_json_packed = self.jim.message(self.active_chat, message_txt)
-            # print(message_json_packed)
-            # print("Message length is {}".format(len(message_json_packed)))
             self.tcpSocket.write(message_json_packed)
-            self.chat_area.append(time.strftime("%Y-%m-%d %H:%M"))
-            self.chat_area.append('{}: {}'.format(self.jim.username, message_txt))
             self.message_area.clear()
             self.message_area.setFocus()
-            # self.last_sent_message = message_txt
 
 
 def main():

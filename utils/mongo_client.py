@@ -1,4 +1,4 @@
-from pymongo import MongoClient, errors
+from pymongo import MongoClient, errors, DESCENDING
 import time
 
 
@@ -87,11 +87,12 @@ class AwesomDBClient(MongoClient):
         if y:
             search_condition = {'from': sender, 'to': receiver}
         if search_condition:
-            for z in self.message_collection.find(search_condition).sort('time'):
+            for z in self.message_collection.find(search_condition).sort('time', DESCENDING).limit(ncount):
                 current_msg = dict(z)
                 current_msg.pop('_id')
                 current_msg.pop('timestamp')
                 messages.append(current_msg)
+        messages.sort(key=lambda k: k['time'])
         return messages
 
 if __name__ == '__main__':
