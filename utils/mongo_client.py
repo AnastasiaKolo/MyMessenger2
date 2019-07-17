@@ -87,7 +87,7 @@ class AwesomDBClient(MongoClient):
         if y:
             search_condition = {'from': sender, 'to': receiver}
         if search_condition:
-            for z in self.message_collection.find(search_condition):
+            for z in self.message_collection.find(search_condition).sort('time'):
                 current_msg = dict(z)
                 current_msg.pop('_id')
                 current_msg.pop('timestamp')

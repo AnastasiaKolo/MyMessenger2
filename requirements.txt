@@ -9,6 +9,7 @@ kivy-deps.sdl2==0.1.22
 Kivy-Garden==0.1.4
 Pillow==6.0.0
 Pygments==2.4.2
+pymongo==3.8.0
 PyQt5==5.12.2
 PyQt5-sip==4.19.17
 requests==2.22.0

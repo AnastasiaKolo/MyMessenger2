@@ -111,12 +111,16 @@ class Server(JimServer):
 
     def disconnect_client(self, client_socket):
         client_socket.close()
-        self.clients.remove(client_socket)
-        for chat, userlist in self.chats.items():
-            if self.workers[client_socket].client_name in userlist:
-                userlist.remove(self.workers[client_socket].client_name)
-        self.username_clients.pop(self.workers[client_socket].client_name)
-        self.workers.pop(client_socket)
+        if client_socket in self.clients:
+            self.clients.remove(client_socket)
+        client_name = self.workers[client_socket].client_name
+        # for chat, userlist in self.chats.items():
+        #     if client_name in userlist:
+        #         userlist.remove(client_name)
+        if client_name in self.username_clients:
+            self.username_clients.pop(client_name)
+        if client_socket in self.workers:
+            self.workers.pop(client_socket)
 
 
     def broadcast_server_message(self, msg, chat=None):

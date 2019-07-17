@@ -42,7 +42,7 @@ class Messenger_Window(QMainWindow):
         v_splitter.addWidget(self.chat_area)
         v_splitter.addWidget(self.message_area)
         self.setCentralWidget(v_splitter)
-        self.setGeometry(200, 50, 700, 900)
+        self.setGeometry(200, 50, 500, 900)
         self.create_actions()
         self.init_tool_bar()
         self.layout().setSpacing(0)
@@ -286,12 +286,15 @@ class Messenger(Messenger_Window):
                         self.chat_area.clear()
                     # TODO here is an assumption that message is to chat or from user
                     # if message to current chat or dialog then display it
-                    if (server_resp['from'] == self.jim.username) and \
-                            (server_resp['from'] == self.active_chat and server_resp['to'] == self.jim.username) or \
-                            (self.active_chat == server_resp['to']):
-                        self.chat_area.append(time.strftime("%Y-%m-%d %H:%M", time.localtime(server_resp['time'])))
-                        self.chat_area.append('{}: {}'.format(server_resp['from'], server_resp['message']))
+                    # TODO incorrect display of received old message pack
+                    if (server_resp['from'] == self.active_chat and server_resp['to'] == self.jim.username) or \
+                            (self.active_chat == server_resp['to'] and server_resp['from'] != self.jim.username):
+                        self.display_message(server_resp)
                     # print('\n' + server_resp['alert'])
+
+    def display_message(self, server_resp ):
+        self.chat_area.append(time.strftime("%Y-%m-%d %H:%M", time.localtime(server_resp['time'])))
+        self.chat_area.append('{}: {}'.format(server_resp['from'], server_resp['message']))
 
     def display_error(self):
         self.chat_area.append(time.strftime("%Y-%m-%d %H:%M", time.localtime()))
