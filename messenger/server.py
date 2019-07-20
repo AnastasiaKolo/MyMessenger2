@@ -3,8 +3,6 @@
 
 import argparse
 import select
-import time
-import traceback
 from socket import *
 
 import datetime
@@ -68,6 +66,7 @@ class Worker:
                 elif message['action'] == 'join':
                     messages_to_client = messaging_server.dbclient.get_messages(self.client_name,  message['chat'], 10)
                     for msg in messages_to_client:
+                        msg['archive'] = True
                         self.queue_out.append(msg)
                     msg_broadcast = messaging_server.info_user_in_chat(self.client_name, message['chat'])
                     messaging_server.broadcast_server_message(msg_broadcast, message['chat'])

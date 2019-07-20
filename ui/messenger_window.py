@@ -325,10 +325,12 @@ class Messenger(Messenger_Window):
                     # received a message
                     if self.chat_area.toPlainText() == 'В чат пока ничего не написали':
                         self.chat_area.clear()
+                    # display if it is a history message
+                    if 'archive' in server_resp:
+                        self.display_message(server_resp)
                     # if message to current chat or dialog then display it
-                    if (server_resp['from'] == self.active_chat and server_resp['to'] == self.jim.username) or \
-                            (self.active_chat == server_resp['to']) or \
-                            (server_resp['from'] == self.jim.username and server_resp['to'] == self.active_chat):
+                    elif (server_resp['from'] == self.active_chat and server_resp['to'] == self.jim.username) or \
+                            (self.active_chat == server_resp['to']) :
                         self.display_message(server_resp)
                     print('received message {}'.format(server_resp))
                 else:
@@ -355,6 +357,8 @@ class Messenger(Messenger_Window):
         else:
             message_json_packed = self.jim.message(self.active_chat, message_txt)
             self.tcpSocket.write(message_json_packed)
+            if self.active_chat != self.jim.username and self.active_chat in self.online_users:
+                self.display_message({'from': self.jim.username, 'message': message_txt, 'time': time.time()})
             self.message_area.clear()
             self.message_area.setFocus()
 
